@@ -1,0 +1,32 @@
+{
+  "name": "pivserver",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --require ts-node/register",
+    "build": "tsc -p tsconfig.json",
+    "start": "nodemon dist/index.js",
+    "start-dev": "npm run build && node dist/index.js"
+  },
+  "author": "Saverio Perrone",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.7.7",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/mocha": "^10.0.10",
+    "@types/pg": "^8.11.10",
+    "@types/sinon": "^17.0.3",
+    "mocha": "^11.0.1",
+    "nodemon": "^3.1.7",
+    "sinon": "^19.0.2",
+    "ts-node": "^10.9.2"
+  }
+}
