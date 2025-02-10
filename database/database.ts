@@ -211,15 +211,15 @@ export async function saveProductPrice(table: string, price: ProductPrice, creat
 
 export async function getProductsInfo(searchQuery: string, offset: number, limit: number) {
     const queryString = `
-        SELECT product_id, name, unit AS quantity_unit, value AS quantity_value
+        SELECT DISTINCT ON (product_id) 
+        product_id, 
+        name, 
+        unit AS quantity_unit, 
+        value AS quantity_value
         FROM products_esselunga
         WHERE name ILIKE '%' || $1 || '%'
-        AND created_at = (
-            SELECT MAX(created_at) 
-            FROM products_esselunga
-            WHERE name ILIKE '%' || $1 || '%')
-        ORDER BY product_id
-        OFFSET $2 LIMIT $3; 
+        ORDER BY product_id, created_at DESC
+        OFFSET $2 LIMIT $3;
     `;
     const query = {
         text: queryString,
