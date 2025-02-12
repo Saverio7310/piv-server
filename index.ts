@@ -1,12 +1,27 @@
+import dotenv from 'dotenv';
+
+dotenv.config({ path: `.env.${process.env.NODE_ENV}`});
+
 import express, { ErrorRequestHandler } from 'express';
+import helmet from 'helmet';
 import bodyParser from 'body-parser';
 import { router } from './routes/productsRouter';
 import cors from 'cors';
 
-const port = 3030;
+const port: number = process.env.SERVER_PORT ? parseInt(process.env.SERVER_PORT) : 3030;
 const app = express();
 
-app.use(cors());
+app.set('trust proxy', 1); //get original client's ip
+
+app.use(helmet()); //set security headers
+const origin = process.env.CLIENT_CORS_ORIGIN?.split(',');
+const methods = process.env.CLIENT_CORS_METHODS?.split(',') || ['GET'];
+app.use(cors({
+  origin: origin,
+  methods: methods,
+  credentials: false,
+}));
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
