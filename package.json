@@ -6,7 +6,8 @@
     "test": "mocha --require ts-node/register",
     "build": "tsc -p tsconfig.json",
     "start": "nodemon dist/index.js",
-    "start-dev": "npm run build && node dist/index.js"
+    "start-dev": "npm run build && NODE_ENV=development node dist/index.js",
+    "start:backend": "NODE_ENV=production node dist/index.js"
   },
   "author": "Saverio Perrone",
   "license": "ISC",
