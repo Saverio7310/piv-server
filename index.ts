@@ -8,7 +8,7 @@ import bodyParser from 'body-parser';
 import { router } from './routes/productsRouter';
 import cors from 'cors';
 
-const port: number = process.env.SERVER_PORT ? parseInt(process.env.SERVER_PORT) : 3030;
+const port: number = process.env.PORT ? parseInt(process.env.PORT) : 3030;
 const app = express();
 
 app.set('trust proxy', 1); //get original client's ip
