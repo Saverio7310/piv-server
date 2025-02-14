@@ -7,6 +7,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "nodemon dist/index.js",
     "start-dev": "npm run build && NODE_ENV=development node dist/index.js",
+    "build:backend": "npm install && npm run build",
     "start:backend": "NODE_ENV=production node dist/index.js"
   },
   "author": "Saverio Perrone",
