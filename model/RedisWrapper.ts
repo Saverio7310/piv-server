@@ -8,9 +8,8 @@ export class RedisWrapper implements Cache {
     private constructor() {
         console.log('Constructor');
         this.client = createClient({
+            url: process.env.REDIS_URL,
             socket: {
-                host: process.env.REDIS_HOST,
-                port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
                 reconnectStrategy(retries) {
                     if (retries > 5) {
                       console.error("Max Redis retries reached. Giving up.");
@@ -18,8 +17,7 @@ export class RedisWrapper implements Cache {
                     }
                     return Math.min(2 ** retries * 100, 3000); // Exponential backoff (max 3s)
                   }
-            },
-            password: process.env.REDIS_PASSWORD,
+            }
         });
         this.client.on('error', (error) => console.error('Redis error', error));
         this.client.on("end", () => console.warn("Redis connection closed. Server will continue without Redis."));
