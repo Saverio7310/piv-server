@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { Request, Response, NextFunction } from 'express';
 import { getProductPrice, getProductsInfo } from '../database/database';
 import { RedisWrapper } from '../model/RedisWrapper';
@@ -38,11 +37,11 @@ export const getProductInfo = async (req: Request, res: Response, next: NextFunc
     //const product_id = req.params.product_id;
     const data = matchedData(req);
     const product_id: string = data.product_id;
-    
+
     const cache = await RedisWrapper.getInstance();
     const cacheKey = `prices:${product_id}`;
     const result = await cache.cacheData(cacheKey, () => getProductPrice(product_id));
-    
+
     if (result.rowCount === null) {
         next(new Error('Database connection error'));
         return;
