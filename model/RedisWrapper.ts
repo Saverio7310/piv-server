@@ -1,3 +1,4 @@
+import { DBResult } from "../types/databaseResultType";
 import { Cache } from "./Cache";
 import { createClient, RedisClientType } from 'redis'
 
@@ -10,11 +11,12 @@ export class RedisWrapper implements Cache {
         this.client = createClient({
             url: process.env.REDIS_URL,
             socket: {
-                reconnectStrategy(retries) {
-                    if (retries > 5) {
+                reconnectStrategy(retries, cause) {
+                    if (retries >= 4) {
                       console.error("Max Redis retries reached. Giving up.");
                       return false;
                     }
+                    console.log('Redis attempt:', retries);
                     return Math.min(2 ** retries * 100, 3000); // Exponential backoff (max 3s)
                   }
             }
@@ -28,21 +30,32 @@ export class RedisWrapper implements Cache {
         if (!RedisWrapper.instance) {
             RedisWrapper.instance = new RedisWrapper();
         }
-        if (!RedisWrapper.instance.client.isOpen)
-            await RedisWrapper.instance.client.connect();
+        if (!RedisWrapper.instance.client.isReady)
+            try {
+                await RedisWrapper.instance.client.connect();
+                console.log('Redis client connected');
+            } catch (error) {
+                console.error('Redis is unreachable');
+            }
         return RedisWrapper.instance;
     }
 
+    isReady() {
+        return RedisWrapper.instance.client.isReady;
+    }
+
     async getItem(key: string): Promise<any | null> {
-        console.log('Get item');
+        if (!this.isReady()) return null;
         const value = await this.client.get(key);
         return value ? JSON.parse(value) : value;
     }
     async getItems(pattern: string): Promise<any[] | null> {
+        if (!this.isReady()) return null;
         const value = await this.client.keys(pattern);
         return value;
     }
     async setItem(key: string, value: any, expiration?: number): Promise<void> {
+        if (!this.isReady()) return;
         console.log('Set item');
         value = JSON.stringify(value);
         let result;
@@ -52,6 +65,7 @@ export class RedisWrapper implements Cache {
             result = await this.client.set(key, value);
     }
     async deleteItem(key: string): Promise<void> {
+        if (!this.isReady()) return;
         /**
          * should return 
          * 1 if element was found and deleted
@@ -73,7 +87,8 @@ export class RedisWrapper implements Cache {
         }
     }
 
-    async cacheData(key: string, cb: () => Promise<any>) {
+    async cacheData(key: string, cb: () => Promise<DBResult>) : Promise<DBResult> {
+        console.log('Caching data');
         const cachedData = await this.getItem(key);
         
         if (cachedData) {
@@ -96,6 +111,7 @@ export class RedisWrapper implements Cache {
         }
         const EXPIRATION_TIME = 60 * 60;
         await this.setItem(key, storedData, EXPIRATION_TIME);
+        console.log('Caching data ended');
         return storedData;
     }
 }
