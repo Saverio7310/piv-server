@@ -5,7 +5,10 @@ dotenv.config({ path: `.env.${process.env.NODE_ENV}`});
 import express, { ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
 import bodyParser from 'body-parser';
+import compression from 'compression';
 import { router } from './routes/productsRouter';
+import { routerV2 } from './routes/productsRouterV2';
+import rateLimiter from './middleware/rateLimiter';
 import cors from 'cors';
 
 const port: number = process.env.PORT ? parseInt(process.env.PORT) : 3030;
@@ -25,7 +28,12 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
+app.use(compression())
+
+app.use('*', rateLimiter);
+
 app.use('/api/v1/', router);
+app.use('/api/v2/', routerV2)
 
 app.use('*', (req, res, next) => {
     const data = {
