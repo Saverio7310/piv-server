@@ -37,3 +37,13 @@ export type DBResult = {
     rowCount: number | null,
     data: any[],
 }
+
+export interface Prices {
+    supermarket_name: string,
+    product_id: number,
+    unit_prices: number[],
+    prices: number[],
+    discounted_prices: number[], 
+    discounted_unit_prices: number[],
+    dates: string[],
+}
