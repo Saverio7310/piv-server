@@ -1,32 +1,296 @@
-import { getPrettifiedProducts, getProducts, saveProduct, saveProductPrice, tryConnection, updatePrices, updateQuantity } from "../../database/database";
+import { getPrettifiedProducts, getProducts, saveProduct, saveProductPrice, tryConnection, updatePrices, updateQuantity, getSupermarkets, getProductsInfo2 } from "../../database/database";
 import assert from 'assert';
 import { Product, ProductInfo, ProductPrice } from "../../types/databaseResultType";
 import { Converter } from "../../utils/conversion";
 
 describe('Database connection', function () {
-    it('should connect', async function () {
-        const table = 'prods_json';
-
-        const res = await tryConnection(table);
+    it('should connect to the Database', async function () {
+        const res = await tryConnection();
 
         assert.ok(res && typeof res === 'object');
     });
-    it('should fetch one row', async function () {
-        const table = 'products_esselunga';
+});
 
-        const res = await tryConnection(table);
+describe('Fetching data', function () {
+    it('should fetch all supermarkets\' names', async function () {
+        const supermarkets = await getSupermarkets();
 
-        assert.ok(res && typeof res === 'object');
-    })
+        assert.deepEqual(supermarkets.data, ['esselunga', 'pam']);
+    });
+    it('shuold fetch 8 products named \'abbracci\'', async function () {
+        const products = await getProductsInfo2('abbracci', 0, 100);
+
+        assert.ok(products.rowCount === 8);
+    });
+    it('shuold fetch 20 products named \'biscotti\'', async function () {
+        const products = await getProductsInfo2('biscotti', 0, 100);
+
+        assert.ok(products.rowCount === 20);
+    });
+    it('should group the same products together', async function () {
+        const products = await getProductsInfo2('abbracci', 0, 100);
+        interface ProductsMap {
+            [key: string]: Product;
+        };
+        interface SupermarketData {
+            supermarket: string,
+            origin_id: number
+        }
+        interface Product {
+            name: string,
+            brand: string,
+            quantity_unit: string,
+            quantity_value: number,
+            product_id: number,
+            supermarkets: SupermarketData[]
+        };
+        
+        const products_map: ProductsMap = {};
+        for (const prod of products.data) {
+            if (prod.master_id) {
+                if (!products_map[`master_${prod.master_id}`]) {
+                    const final_product: Product = {
+                        name: prod.master_name,
+                        brand: prod.master_brand,
+                        quantity_unit: prod.master_quantity_unit,
+                        quantity_value: prod.master_quantity_value,
+                        product_id: prod.master_id,
+                        supermarkets: [{ supermarket: prod.supermarket_name, origin_id: prod.product_id }]
+                    };
+                    products_map[`master_${prod.master_id}`] =  final_product;
+                } else {
+                    products_map[`master_${prod.master_id}`].supermarkets.push({ supermarket: prod.supermarket_name, origin_id: prod.product_id })
+                }
+            } else {
+                if (!products_map[`${prod.supermarket_name}_${prod.product_id}`]) {
+                    const final_product: Product = {
+                        name: prod.name,
+                        brand: prod.brand ?? '',
+                        quantity_unit: prod.quantity_unit,
+                        quantity_value: prod.quantity_value,
+                        product_id: prod.product_id,
+                        supermarkets: [{ supermarket: prod.supermarket_name, origin_id: prod.product_id }]
+                    };
+                    products_map[`${prod.supermarket_name}_${prod.product_id}`] = final_product;
+                } else {
+                    products_map[`${prod.supermarket_name}_${prod.product_id}`].supermarkets.push({ supermarket: prod.supermarket_name, origin_id: prod.product_id });
+                }
+            }
+        }
+        const result: Product[] = [];
+        for (const [ key, value ] of Object.entries(products_map)) {
+            result.push(value);
+        }
+        console.log(result);
+    });
+    it('should group the same products together', async function () {
+        const products = await getProductsInfo2('abbracci', 0, 100);
+        interface ProductsMap {
+            [key: string]: Product;
+        };
+        interface SupermarketData {
+            supermarket: string,
+            origin_id: number
+        }
+        interface Product {
+            name: string,
+            brand: string,
+            quantity_unit: string,
+            quantity_value: number,
+            product_id: number,
+            supermarkets: SupermarketData[]
+        };
+        
+        const products_map: ProductsMap = {};
+        for (const prod of products.data) {
+            const final_product: Product = {
+                name: prod.master_name ?? prod.name,
+                brand: prod.master_brand ?? prod.brand ?? '',
+                quantity_unit: prod.master_quantity_unit ?? prod.quantity_unit,
+                quantity_value: prod.master_quantity_value ?? prod.quantity_value,
+                product_id: prod.master_id ?? prod.product_id,
+                supermarkets: [{ supermarket: prod.supermarket_name, origin_id: prod.product_id }]
+            };
+            if (prod.master_id) {
+                if (!products_map[`master_${prod.master_id}`]) {
+                    products_map[`master_${prod.master_id}`] =  final_product;
+                } else {
+                    products_map[`master_${prod.master_id}`].supermarkets.push({ supermarket: prod.supermarket_name, origin_id: prod.product_id })
+                }
+            } else {
+                if (!products_map[`${prod.supermarket_name}_${prod.product_id}`]) {
+                    products_map[`${prod.supermarket_name}_${prod.product_id}`] = final_product;
+                } else {
+                    products_map[`${prod.supermarket_name}_${prod.product_id}`].supermarkets.push({ supermarket: prod.supermarket_name, origin_id: prod.product_id });
+                }
+            }
+        }
+        const result: Product[] = [];
+        for (const [ key, value ] of Object.entries(products_map)) {
+            result.push(value);
+        }
+        console.log(result);
+    });
+    it.skip('should group the same products together', function () {
+        const products = {
+            rowCount: 8,
+            data: [
+                {
+                    master_id: 2,
+                    master_name: 'Abbracci biscotti con panna e cacao',
+                    master_brand: 'Mulino Bianco',
+                    master_quantity_unit: 'g ',
+                    master_quantity_value: 350,
+                    supermarket_name: 'esselunga',
+                    product_id: 5637735,
+                    name: 'Mulino Bianco, Abbracci biscotti con panna e cacao 350 g',
+                    brand: 'Mulino Bianco',
+                    quantity_unit: 'g ',
+                    quantity_value: 350
+                },
+                {
+                    master_id: 3,
+                    master_name: 'Abbracci biscotti con panna e cacao',
+                    master_brand: 'Mulino Bianco',
+                    master_quantity_unit: 'g ',
+                    master_quantity_value: 700,
+                    supermarket_name: 'esselunga',
+                    product_id: 5718156,
+                    name: 'Mulino Bianco, Abbracci biscotti con panna e cacao 700 g',
+                    brand: 'Mulino Bianco',
+                    quantity_unit: 'g ',
+                    quantity_value: 700
+                },
+                {
+                    master_id: null,
+                    master_name: null,
+                    master_brand: null,
+                    master_quantity_unit: null,
+                    master_quantity_value: null,
+                    supermarket_name: 'esselunga',
+                    product_id: 5732269,
+                    name: 'Dove, Body Love Abbraccio Profondo Idratazione Profonda crema corpo per pelli secche 400 ml',
+                    brand: 'Dove',
+                    quantity_unit: 'ml',
+                    quantity_value: 400
+                },
+                {
+                    master_id: null,
+                    master_name: null,
+                    master_brand: null,
+                    master_quantity_unit: null,
+                    master_quantity_value: null,
+                    supermarket_name: 'esselunga',
+                    product_id: 5866234,
+                    name: 'Yogi Tea, infuso biologico Abbraccio della Sera Rooibos e Vaniglia 17 bustine filtro 30,6 g',
+                    brand: null,
+                    quantity_unit: 'g ',
+                    quantity_value: 30
+                },
+                {
+                    master_id: 2,
+                    master_name: 'Abbracci biscotti con panna e cacao',
+                    master_brand: 'Mulino Bianco',
+                    master_quantity_unit: 'g ',
+                    master_quantity_value: 350,
+                    supermarket_name: 'pam',
+                    product_id: 1037781,
+                    name: 'BISCOTTI ABBRACCI',
+                    brand: 'MULINO BIANCO',
+                    quantity_unit: 'gr',
+                    quantity_value: 350
+                },
+                {
+                    master_id: null,
+                    master_name: null,
+                    master_brand: null,
+                    master_quantity_unit: null,
+                    master_quantity_value: null,
+                    supermarket_name: 'pam',
+                    product_id: 1146938,
+                    name: 'BISCOTTI ABBRACCI',
+                    brand: 'M.BIANCO',
+                    quantity_unit: 'gr',
+                    quantity_value: 700
+                },
+                {
+                    master_id: null,
+                    master_name: null,
+                    master_brand: null,
+                    master_quantity_unit: null,
+                    master_quantity_value: null,
+                    supermarket_name: 'pam',
+                    product_id: 1197974,
+                    name: 'CREMA CORPO BODYLOVE ABBRACCIO PROFONDO 400ML',
+                    brand: 'DOVE',
+                    quantity_unit: 'ml',
+                    quantity_value: 400
+                },
+                {
+                    master_id: null,
+                    master_name: null,
+                    master_brand: null,
+                    master_quantity_unit: null,
+                    master_quantity_value: null,
+                    supermarket_name: 'pam',
+                    product_id: 1266147,
+                    name: 'INFUSO ABBRACCIO DELLA SERA 17F',
+                    brand: 'YOGITEA',
+                    quantity_unit: 'gr',
+                    quantity_value: 30
+                }
+            ]
+        };
+        interface ProductsMap {
+            [key: string]: Product[];
+        };
+        interface Product {
+            name: string,
+            brand: string,
+            quantity_unit: string,
+            quantity_value: number,
+            product_id: number,
+            supermarket: string
+        };
+        const time = Date.now();
+        const products_map: ProductsMap = {};
+        for (const prod of products.data) {
+            if (prod.master_id) {
+                if (!products_map[`master_${prod.master_id}`]) products_map[`master_${prod.master_id}`] = [];
+                const final_product: Product = {
+                    name: prod.master_name,
+                    brand: prod.master_brand,
+                    quantity_unit: prod.master_quantity_unit,
+                    quantity_value: prod.master_quantity_value,
+                    product_id: prod.product_id,
+                    supermarket: prod.supermarket_name
+                };
+                products_map[`master_${prod.master_id}`].push(final_product);
+            } else {
+                if (!products_map[`${prod.supermarket_name}_${prod.product_id}`]) products_map[`${prod.supermarket_name}_${prod.product_id}`] = [];
+                const final_product: Product = {
+                    name: prod.name,
+                    brand: prod.brand ?? '',
+                    quantity_unit: prod.quantity_unit,
+                    quantity_value: prod.quantity_value,
+                    product_id: prod.product_id,
+                    supermarket: prod.supermarket_name
+                };
+                products_map[`${prod.supermarket_name}_${prod.product_id}`].push(final_product);
+            }
+        }
+        console.log(products_map, Date.now() - time);
+    });
 });
 
 describe.skip('Populate new table', function () {
     it.skip('should return the necessary data', async function () {
         const table = 'prods_json';
+        const date = '';
         const offset = 0;
         const limit = 25;
 
-        const res = await getProducts(table, offset, limit);
+        const res = await getProducts(table, date, offset, limit);
         if (!res)
             return;
         const prods: Product[] = res.rows;
@@ -47,12 +311,13 @@ describe.skip('Populate new table', function () {
         this.timeout(120000);
         const fromTable = 'prods_json';
         const toTable = 'products_esselunga';
+        const date = '';
         let offset = 0;
         const limit = 500;
 
         let check = true;
         while (check) {
-            const fetchResult = await getProducts(fromTable, offset, limit);
+            const fetchResult = await getProducts(fromTable, date, offset, limit);
             if (!fetchResult || fetchResult.rowCount === 0)
                 break;
             const prods: Product[] = fetchResult.rows;
@@ -79,6 +344,7 @@ describe.skip('Populate new table', function () {
         const fromTable = 'prods_json';
         const productsTable = 'products_esselunga';
         const pricesTable = 'prices_esselunga';
+        const date = '2025-03-12';
         let offset = 0;
         const limit = 500;
 
@@ -136,7 +402,7 @@ describe.skip('Populate new table', function () {
 
         let check = true;
         while (check) {
-            const fetchResult = await getProducts(fromTable, offset, limit);
+            const fetchResult = await getProducts(fromTable, date, offset, limit);
             if (!fetchResult || fetchResult.rowCount === 0)
                 break;
             const prods: any[] = fetchResult.rows;
@@ -164,15 +430,16 @@ describe.skip('Populate new table', function () {
     });
 });
 
-describe('create prices records', function () {
+describe.skip('create prices records', function () {
     it('should create the correct prices', async function () {
         this.timeout(1200000);
+        const date = '2025-03-12';
         let offset = 0;
         const limit = 500;
 
         let check = true;
         while (check) {
-            const prods = await getPrettifiedProducts('', offset, limit);
+            const prods = await getPrettifiedProducts('', date, offset, limit);
             if (!prods || prods.rowCount === 0) {
                 console.log('Exiting...', prods);
                 break;
