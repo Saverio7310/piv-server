@@ -1,40 +1,29 @@
-import { NextFunction, Request, Response, Router } from 'express';
+import { Router } from 'express';
 import { getProducts, getProductInfo } from '../controller/productsController';
-import { body, param, query, validationResult } from 'express-validator';
-import rateLimiter from '../middleware/rateLimiter';
+import { param, query } from 'express-validator';
+import handleValidationErrors from '../utils/validationErrors';
 
 export const router = Router();
-
-const handleValidationErrors = (req: Request, res: Response, next: NextFunction) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        res.status(400).json({errors: errors.array()});
-        return;
-    }
-    next();
-};
-
-router.use('*', rateLimiter);
 
 router.get('/products/:searchQuery',
     [
         param('searchQuery')
             .trim()
-            .isLength({min: 3, max: 50}).withMessage('Input string\'s length out of bounds')
-            .customSanitizer((value) => value.split('-').join(' ').replace('%25', '%')),
+            .isLength({ min: 3, max: 50 }).withMessage('Input string\'s length out of bounds')
+            .customSanitizer(value => decodeURIComponent(value)),
         query('offset')
             .trim()
-            .isInt({min: 0, max: 200}).withMessage('Offset value out of bounds')
+            .isInt({ min: 0, max: 200 }).withMessage('Offset value out of bounds')
             .toInt()
     ],
-    handleValidationErrors, 
+    handleValidationErrors,
     getProducts);
 
-router.get('/products/:product_id/info', 
+router.get('/products/:product_id/info',
     [
         param('product_id')
             .trim()
-            .isInt({min: 0}).withMessage('Invalid product\'s identifier')
+            .isInt({ min: 0 }).withMessage('Invalid product\'s identifier')
     ],
-    handleValidationErrors, 
+    handleValidationErrors,
     getProductInfo);
